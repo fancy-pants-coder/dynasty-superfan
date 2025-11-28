@@ -1,0 +1,13 @@
+{
+  "name": "fantasy-superfan-app",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run start:dev --workspace=apps/api\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}

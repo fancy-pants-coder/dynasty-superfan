@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SubscriptionTier {
+  SUBSCRIBED
+  NOT_SUBSCRIBED
+}
+
+enum LeagueStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum Position {
+  QB
+  RB
+  WR
+  TE
+  K
+  DEF
+}
+
+model User {
+  id               String           @id @default(uuid())
+  sleeperUsername  String           @unique @map("sleeper_username")
+  email            String?
+  subscriptionTier SubscriptionTier @default(NOT_SUBSCRIBED) @map("subscription_tier")
+  teams            Team[]
+
+  @@map("users")
+}
+
+model League {
+  id               String       @id @default(uuid())
+  externalId       String       @unique @map("external_id")
+  status           LeagueStatus @default(ACTIVE)
+  settings         Json
+  season           String
+  lastFullSyncAt   DateTime?    @map("last_full_sync_at")
+  lastRosterSyncAt DateTime?    @map("last_roster_sync_at")
+  teams            Team[]
+  powerRankings    PowerRanking[]
+
+  @@map("leagues")
+}
+
+model Team {
+  id             String         @id @default(uuid())
+  leagueId       String         @map("league_id")
+  ownerId        String?        @map("owner_id")
+  rosterSettings Json           @map("roster_settings")
+  metadata       Json
+  league         League         @relation(fields: [leagueId], references: [id])
+  owner          User?          @relation(fields: [ownerId], references: [id])
+  rosters        Roster[]
+  powerRankings  PowerRanking[]
+  matchupsAsA    Matchup[]      @relation("TeamA")
+  matchupsAsB    Matchup[]      @relation("TeamB")
+  matchupsWon    Matchup[]      @relation("Winner")
+
+  @@map("teams")
+}
+
+model Player {
+  id              String         @id @default(uuid())
+  sleeperPlayerId String         @unique @map("sleeper_player_id")
+  fullName        String         @map("full_name")
+  position        Position
+  age             Int?
+  team            String?
+  rosters         Roster[]
+  dynastyValues   DynastyValue[]
+
+  @@map("players")
+}
+
+model Roster {
+  teamId    String  @map("team_id")
+  playerId  String  @map("player_id")
+  isStarter Boolean @default(false) @map("is_starter")
+  team      Team    @relation(fields: [teamId], references: [id])
+  player    Player  @relation(fields: [playerId], references: [id])
+
+  @@id([teamId, playerId])
+  @@map("rosters")
+}
+
+model DynastyValue {
+  playerId   String   @map("player_id")
+  date       DateTime
+  valueScore Int      @map("value_score")
+  trend7Day  Int      @map("trend_7day")
+  player     Player   @relation(fields: [playerId], references: [id])
+
+  @@id([playerId, date])
+  @@map("dynasty_values")
+}
+
+model PowerRanking {
+  leagueId       String @map("league_id")
+  teamId         String @map("team_id")
+  week           Int
+  season         Int
+  dynastyScore   Int    @map("dynasty_score")
+  contenderScore Int    @map("contender_score")
+  rank           Int
+  league         League @relation(fields: [leagueId], references: [id])
+  team           Team   @relation(fields: [teamId], references: [id])
+
+  @@id([leagueId, teamId, week, season])
+  @@map("power_rankings")
+}
+
+model Matchup {
+  id               String @id @default(uuid())
+  teamAId          String @map("team_a_id")
+  teamBId          String @map("team_b_id")
+  winnerId         String? @map("winner_id")
+  scoreDifferential Float  @map("score_differential")
+  season           Int
+  week             Int
+  
+  teamA            Team   @relation("TeamA", fields: [teamAId], references: [id])
+  teamB            Team   @relation("TeamB", fields: [teamBId], references: [id])
+  winner           Team?  @relation("Winner", fields: [winnerId], references: [id])
+
+  @@map("matchup_history")
+}
